@@ -33,7 +33,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Floor Inspection API", lifespan=lifespan)
+app = FastAPI(title="Crack Inspection API", lifespan=lifespan)
 
 
 @app.get("/health")
