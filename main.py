@@ -6,6 +6,7 @@ from pathlib import Path
 
 import cv2
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from ultralytics import YOLO
 
@@ -34,6 +35,15 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Crack Inspection API", lifespan=lifespan)
+
+# Enable CORS for all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
