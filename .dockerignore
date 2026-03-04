@@ -1,9 +1,10 @@
 # Dependencies
+
 node_modules/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+**pycache**/
+_.pyc
+_.pyo
+\*.pyd
 .Python
 env/
 venv/
@@ -12,42 +13,51 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # IDE
+
 .idea/
 .vscode/
-*.swp
-*.swo
-*~
+_.swp
+_.swo
+\*~
 
 # OS
+
 .DS_Store
 Thumbs.db
 
 # Temp files
+
 temp/
-*.tmp
-*.temp
+_.tmp
+_.temp
 
 # Logs
-*.log
+
+\*.log
 logs/
 
 # Docker
+
 .docker/
 
 # Git
+
 .git/
 .gitignore
 
 # Documentation
-*.md
+
+\*.md
 !README.md
 
 # Test files
+
 tests/
-test_*.py
-*_test.py
+test\__.py
+_\_test.py
 
 # Build artifacts
+
 dist/
 build/
-*.egg-info/
+\*.egg-info/

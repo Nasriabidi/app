@@ -25,6 +25,7 @@ app/
 ## Quick Start
 
 ### Prerequisites
+
 - Docker & Docker Compose installed
 - At least 4GB of RAM available
 
@@ -49,10 +50,10 @@ docker-compose down
 
 ## Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| web | 80 | Nginx serving frontend + API proxy |
-| api | 8000 | FastAPI backend with YOLOv8 |
+| Service | Port | Description                        |
+| ------- | ---- | ---------------------------------- |
+| web     | 80   | Nginx serving frontend + API proxy |
+| api     | 8000 | FastAPI backend with YOLOv8        |
 
 ## Architecture
 
@@ -88,9 +89,9 @@ User Browser
 
 ### Security Group Rules
 
-| Type | Port | Source |
-|------|------|--------|
-| HTTP | 80 | 0.0.0.0/0 |
+| Type       | Port | Source               |
+| ---------- | ---- | -------------------- |
+| HTTP       | 80   | 0.0.0.0/0            |
 | Custom TCP | 8000 | 0.0.0.0/0 (optional) |
 
 ## Useful Commands
@@ -120,6 +121,7 @@ docker-compose down --rmi all
 ## Troubleshooting
 
 ### API not responding
+
 ```bash
 # Check if container is running
 docker-compose ps
@@ -129,18 +131,20 @@ docker-compose logs api
 ```
 
 ### Model not loading
+
 - Ensure `model/best.pt` exists
 - Check if model file is valid
 
 ### Out of memory
+
 - Increase Docker memory limit
 - Reduce batch size in model
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| PYTHONUNBUFFERED | 1 | Python output buffering |
+| Variable         | Default | Description             |
+| ---------------- | ------- | ----------------------- |
+| PYTHONUNBUFFERED | 1       | Python output buffering |
 
 ## License
 

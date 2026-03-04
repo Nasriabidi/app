@@ -4,9 +4,10 @@
  */
 
 // API URL - Uses nginx proxy in Docker, falls back to direct URL for development
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? '/api'  // Docker: nginx proxies /api/* to api container
-  : `${window.location.protocol}//${window.location.host}/api`;  // Production
+const API_URL =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "/api" // Docker: nginx proxies /api/* to api container
+    : `${window.location.protocol}//${window.location.host}/api`; // Production
 
 // DOM Elements
 const elements = {
