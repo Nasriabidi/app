@@ -1,155 +1,318 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crack Inspection AI</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crack Inspection AI - Intelligent Defect Detection</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+      <div class="bg-gradient"></div>
+      <div class="bg-grid"></div>
+      <div class="floating-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+      </div>
+    </div>
+
     <div class="container">
-        <header class="header">
-            <div class="logo">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                    <path d="M2 17l10 5 10-5"/>
-                    <path d="M2 12l10 5 10-5"/>
-                </svg>
-                <h1>Crack Inspection AI</h1>
-            </div>
-            <p class="subtitle">Advanced crack detection powered by deep learning</p>
-        </header>
-
-        <main class="main-content">
-            <div class="cards-grid">
-                <!-- Upload Section -->
-                <div class="card">
-                    <div class="card-header">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg>
-                        <h2>Upload Image</h2>
-                    </div>
-                    <div class="card-body">
-                        <div class="upload-area" id="uploadArea">
-                            <input type="file" id="fileInput" accept="image/*" hidden>
-                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <polyline points="21 15 16 10 5 21"/>
-                            </svg>
-                            <p>Drag & drop an image or click to browse</p>
-                            <span class="upload-hint">Supports JPG, PNG, WebP</span>
-                        </div>
-                        <div class="preview-container" id="uploadPreview" hidden>
-                            <img id="previewImage" alt="Preview">
-                            <button class="btn btn-secondary btn-small" id="clearUpload">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="18" y1="6" x2="6" y2="18"/>
-                                    <line x1="6" y1="6" x2="18" y2="18"/>
-                                </svg>
-                                Clear
-                            </button>
-                        </div>
-                        <button class="btn btn-primary" id="analyzeUpload" disabled>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                            </svg>
-                            Analyze Image
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Camera Section -->
-                <div class="card">
-                    <div class="card-header">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                            <circle cx="12" cy="13" r="4"/>
-                        </svg>
-                        <h2>Camera Capture</h2>
-                    </div>
-                    <div class="card-body">
-                        <div class="camera-container">
-                            <video id="cameraPreview" autoplay playsinline></video>
-                            <canvas id="cameraCanvas" hidden></canvas>
-                            <div class="camera-placeholder" id="cameraPlaceholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                                    <circle cx="12" cy="13" r="4"/>
-                                </svg>
-                                <p>Camera preview will appear here</p>
-                            </div>
-                        </div>
-                        <div class="camera-controls">
-                            <button class="btn btn-secondary" id="startCamera">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon points="5 3 19 12 5 21 5 3"/>
-                                </svg>
-                                Start Camera
-                            </button>
-                            <button class="btn btn-primary" id="captureAnalyze" disabled>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <circle cx="12" cy="12" r="3"/>
-                                </svg>
-                                Capture & Analyze
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Results Section -->
-            <div class="card result-card" id="resultCard" hidden>
-                <div class="card-header">
-                    <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    <h2>Detection Result</h2>
-                </div>
-                <div class="card-body">
-                    <div class="result-image-container">
-                        <img id="resultImage" alt="Detection Result">
-                    </div>
-                    <button class="btn btn-secondary" id="downloadResult">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Download Result
-                    </button>
-                </div>
-            </div>
-        </main>
-
-        <!-- Loading Overlay -->
-        <div class="loading-overlay" id="loadingOverlay" hidden>
-            <div class="loading-content">
-                <div class="spinner"></div>
-                <p>Analyzing image...</p>
-                <span>This may take a few seconds</span>
-            </div>
+      <!-- Header -->
+      <header class="header">
+        <div class="badge">
+          <span class="badge-dot"></span>
+          AI-Powered Analysis
         </div>
-
-        <!-- Error Toast -->
-        <div class="toast" id="errorToast" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="15" y1="9" x2="9" y2="15"/>
-                <line x1="9" y1="9" x2="15" y2="15"/>
+        <div class="logo">
+          <div class="logo-icon-wrapper">
+            <svg
+              class="logo-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
             </svg>
-            <span id="errorMessage">An error occurred</span>
+          </div>
+          <h1>Crack Inspection <span>AI</span></h1>
         </div>
+        <p class="subtitle">
+          Advanced technology for precise crack detection and structural analysis
+        </p>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+          <div class="stat">
+            <span class="stat-value">99.2%</span>
+            <span class="stat-label">Accuracy</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-value">&lt;2s</span>
+            <span class="stat-label">Analysis Time</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-value">YOLOv8</span>
+            <span class="stat-label">Model</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <div class="cards-grid">
+          <!-- Upload Section -->
+          <div class="card glass-card">
+            <div class="card-glow"></div>
+            <div class="card-header">
+              <div class="card-icon-wrapper">
+                <svg
+                  class="card-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <div class="card-title-group">
+                <h2>Upload Image</h2>
+                <span class="card-subtitle">Drag & drop or browse files</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" accept="image/*" hidden />
+                <div class="upload-icon-wrapper">
+                  <svg
+                    class="upload-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <div class="upload-pulse"></div>
+                </div>
+                <p>Drop your image here</p>
+                <span class="upload-hint">or click to browse</span>
+                <div class="upload-formats">
+                  <span class="format-tag">JPG</span>
+                  <span class="format-tag">PNG</span>
+                  <span class="format-tag">WebP</span>
+                </div>
+              </div>
+              <div class="preview-container" id="uploadPreview" hidden>
+                <img id="previewImage" alt="Preview" />
+                <div class="preview-overlay">
+                  <button class="btn-icon" id="clearUpload" title="Remove image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-glow" id="analyzeUpload" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                <span>Analyze Image</span>
+                <div class="btn-shine"></div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Camera Section -->
+          <div class="card glass-card">
+            <div class="card-glow"></div>
+            <div class="card-header">
+              <div class="card-icon-wrapper camera-icon">
+                <svg
+                  class="card-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                  />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </div>
+              <div class="card-title-group">
+                <h2>Camera Capture</h2>
+                <span class="card-subtitle">Real-time photo analysis</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="camera-container">
+                <video id="cameraPreview" autoplay playsinline></video>
+                <canvas id="cameraCanvas" hidden></canvas>
+                <div class="camera-frame">
+                  <div class="frame-corner tl"></div>
+                  <div class="frame-corner tr"></div>
+                  <div class="frame-corner bl"></div>
+                  <div class="frame-corner br"></div>
+                </div>
+                <div class="camera-placeholder" id="cameraPlaceholder">
+                  <div class="camera-icon-animated">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path
+                        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                      />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    <div class="camera-rings">
+                      <div class="ring ring-1"></div>
+                      <div class="ring ring-2"></div>
+                    </div>
+                  </div>
+                  <p>Camera preview</p>
+                  <span>Click start to enable</span>
+                </div>
+              </div>
+              <div class="camera-controls">
+                <button class="btn btn-secondary" id="startCamera">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  <span>Start Camera</span>
+                </button>
+                <button class="btn btn-primary btn-glow" id="captureAnalyze" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span>Capture & Analyze</span>
+                  <div class="btn-shine"></div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="card glass-card result-card" id="resultCard" hidden>
+          <div class="card-glow success-glow"></div>
+          <div class="card-header result-header">
+            <div class="card-icon-wrapper success-icon">
+              <svg
+                class="card-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <div class="card-title-group">
+              <h2>Detection Result</h2>
+              <span class="card-subtitle success-text">Analysis complete</span>
+            </div>
+            <div class="result-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              Processed
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="result-image-container">
+              <img id="resultImage" alt="Detection Result" />
+              <div class="result-overlay">
+                <div class="scan-line"></div>
+              </div>
+            </div>
+            <div class="result-actions">
+              <button class="btn btn-secondary" id="downloadResult">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Download Result</span>
+              </button>
+              <button class="btn btn-outline" id="newAnalysis">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                <span>New Analysis</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>Powered by <strong>RAK</strong></p>
+      </footer>
+
+      <!-- Loading Overlay -->
+      <div class="loading-overlay" id="loadingOverlay" hidden>
+        <div class="loading-content">
+          <div class="ai-loader">
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-core">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </div>
+          </div>
+          <h3>Analyzing Image</h3>
+          <p>AI is processing your image...</p>
+          <div class="loading-progress">
+            <div class="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Notifications -->
+      <div class="toast error-toast" id="errorToast" hidden>
+        <div class="toast-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
+        </div>
+        <div class="toast-content">
+          <strong>Error</strong>
+          <span id="errorMessage">An error occurred</span>
+        </div>
+        <button class="toast-close" id="closeToast">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <script src="script.js"></script>
-</body>
+  </body>
 </html>
