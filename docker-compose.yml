@@ -12,11 +12,6 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
-    volumes:
-      # Optional: Mount model directory for easy updates without rebuild
-      # - ./model:/app/model:ro
-      # Optional: Mount temp directory for debugging
-      # - ./temp:/app/temp
     healthcheck:
       test:
         [
