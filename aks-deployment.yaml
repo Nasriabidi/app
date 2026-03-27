@@ -1,0 +1,132 @@
+# ============================================================
+# AKS Deployment Manifest — Crack Inspection
+# Apply with: kubectl apply -f aks-deployment.yaml
+# ============================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crack-inspection
+
+---
+# ============================================================
+# Deployment
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crack-inspection
+  namespace: crack-inspection
+  labels:
+    app: crack-inspection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crack-inspection
+  template:
+    metadata:
+      labels:
+        app: crack-inspection
+    spec:
+      containers:
+        - name: crack-inspection
+          image: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<YOUR_REGION>.amazonaws.com/crack-inspection:latest  # Replace with your ECR URI
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80       # Nginx (frontend + API proxy)
+            - name: api
+              containerPort: 8000     # Uvicorn (internal only)
+
+          # Temp dir for image processing
+          volumeMounts:
+            - name: temp-storage
+              mountPath: /app/temp
+
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+
+      volumes:
+        - name: temp-storage
+          emptyDir: {}               # Ephemeral — cleared on pod restart
+
+---
+# ============================================================
+# Service — ClusterIP (Ingress handles external access)
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: crack-inspection-svc
+  namespace: crack-inspection
+spec:
+  selector:
+    app: crack-inspection
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP                    # Not exposed directly — Ingress routes to it
+
+---
+# ============================================================
+# Ingress — AKS Ingress Controller (handles TLS via cert-manager)
+# Replaces your old nginx SSL + Let's Encrypt setup
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: crack-inspection-ingress
+  namespace: crack-inspection
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # cert-manager handles TLS automatically (replaces setup-ssl.sh)
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Increase proxy timeouts for image processing
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  tls:
+    - hosts:
+        - crackinspection.duckdns.org   # Your domain
+      secretName: crack-inspection-tls  # cert-manager stores cert here
+  rules:
+    - host: crackinspection.duckdns.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: crack-inspection-svc
+                port:
+                  number: 80
+
+---
+# ============================================================
+# HorizontalPodAutoscaler (optional — scale on CPU)
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: crack-inspection-hpa
+  namespace: crack-inspection
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: crack-inspection
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
