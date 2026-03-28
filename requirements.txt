@@ -1,8 +1,6 @@
 fastapi>=0.100.0
 uvicorn>=0.23.0
 opencv-python-headless>=4.8.0
-# CPU-only PyTorch — drops size from ~2.5 GB to ~200 MB
-# No CUDA binaries included since AKS nodes are CPU-based
-torch>=2.0.0 --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0 
 ultralytics>=8.0.0
 python-multipart>=0.0.6
