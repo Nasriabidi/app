@@ -248,6 +248,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       # Build locally first — Trivy scans before push
+      # no-cache=true forces full rebuild — ensures CVE fixes are applied
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -255,9 +256,8 @@ jobs:
           file: ./Dockerfile
           push: false
           load: true
+          no-cache: true
           tags: ${{ steps.meta.outputs.image_tag }}
-          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache
-          cache-to: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache,mode=max
 
       # Trivy — scan built image for OS + package CVEs before push
       - name: Run Trivy image scan
@@ -285,11 +285,10 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ steps.meta.outputs.image_tag }}
             ${{ steps.meta.outputs.image_latest }}
-          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache
-          cache-to: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache,mode=max
 
       - name: Pipeline summary
         if: github.event_name == 'push'
