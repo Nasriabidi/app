@@ -80,13 +80,15 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       # ── Hadolint — Dockerfile linter ──────────────────────
-      # Catches security misconfigs in Dockerfile
-      # (running as root, missing flags, bad base images)
+      # Catches real security misconfigs (running as root, bad base images)
+      # DL3008 ignored: apt pinning impractical for system libs
+      # DL3013 ignored: pip already uses -r requirements.txt (versions pinned there)
       - name: Run Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
-          failure-threshold: warning
+          failure-threshold: error
+          ignore: DL3008,DL3013
 
   # ──────────────────────────────────────────────────────────
   # JOB 3 — Dependency Security
