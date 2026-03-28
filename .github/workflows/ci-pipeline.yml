@@ -112,34 +112,28 @@ jobs:
         run: pip install pip-audit cyclonedx-bom
 
       # ── pip-audit — dependency CVE scanner ────────────────
-      - name: Install project dependencies
-        run: pip install -r requirements.txt --quiet
-
       - name: Run pip-audit
         run: |
           pip-audit \
             --requirement requirements.txt \
             --format json \
-            --output pip-audit-report.json \
-            --vulnerability-service osv \
-            || true
+            --vulnerability-service osv 2>&1 | tee pip-audit-report.json
+          echo "Exit code: $?"
 
       - name: Check pip-audit results
         run: |
-          VULNS=$(python3 -c "
-          import json
-          with open('pip-audit-report.json') as f:
-            data = json.load(f)
-          total = sum(len(d.get('vulns',[])) for d in data.get('dependencies',[]))
-          print(total)
-          ")
-          echo "Vulnerabilities found: $VULNS"
-          if [ "$VULNS" -gt "0" ]; then
-            echo "❌ pip-audit found vulnerabilities in dependencies"
-            cat pip-audit-report.json
-            exit 1
-          fi
-          echo "✅ No vulnerabilities found in dependencies"
+          python3 -c "
+          import json, sys
+          try:
+              with open('pip-audit-report.json') as f:
+                  data = json.load(f)
+              total = sum(len(d.get('vulns', [])) for d in data.get('dependencies', []))
+              print(f'Vulnerabilities found: {total}')
+              sys.exit(1 if total > 0 else 0)
+          except Exception as e:
+              print(f'ERROR: {e}')
+              sys.exit(1)
+          "
 
       - name: Upload pip-audit report
         uses: actions/upload-artifact@v4
