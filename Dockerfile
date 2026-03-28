@@ -29,7 +29,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cpu \
         --extra-index-url https://pypi.org/simple \
-        -r requirements.txt
+        -r requirements.txt && \
+    # Fix CVE-2026-24049: wheel privilege escalation
+    pip install --no-cache-dir "wheel>=0.46.2" && \
+    # Fix CVE-2026-23949: jaraco.context path traversal
+    pip install --no-cache-dir "jaraco.context>=6.1.0" 
 
 # ---- Stage 2: Final image ----
 FROM python:3.10-slim
