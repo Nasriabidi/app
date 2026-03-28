@@ -64,7 +64,7 @@ COPY --from=api-builder /usr/local/bin /usr/local/bin
 # Force upgrade vulnerable packages that the base image may have pre-installed
 # Fix CVE-2026-24049: wheel privilege escalation (0.45.1 → 0.46.2)
 # Fix CVE-2026-23949: jaraco.context path traversal (5.3.0 → 6.1.0)
-RUN pip install --no-cache-dir --upgrade "wheel>=0.46.2" "jaraco.context>=6.1.0"
+RUN pip install --no-cache-dir --force-reinstall "wheel==0.46.2" "jaraco.context==6.1.0"
 
 # Copy API source
 COPY main.py .
