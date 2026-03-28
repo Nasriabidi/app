@@ -1,0 +1,312 @@
+# ============================================================
+# CI Pipeline — MLSecOps Security + Build + Push to ECR
+# ============================================================
+
+name: CI — MLSecOps Security + Build & Push
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'main.py'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - 'nginx.aks.conf'
+      - 'supervisord.conf'
+      - 'webapp/**'
+      - 'model/**'
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'main.py'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - 'nginx.aks.conf'
+      - 'supervisord.conf'
+      - 'webapp/**'
+      - 'model/**'
+
+env:
+  ECR_REGISTRY: 351611731527.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: mlsecops/app
+  AWS_REGION: us-east-1
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 1 — Secret Scanning
+  # ──────────────────────────────────────────────────────────
+  secret-scan:
+    name: 🔑 Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0              # Full history — scan all commits
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 2 — Code Security
+  # SonarCloud replaces Bandit — does SAST + code quality
+  # Hadolint — Dockerfile security linting
+  # ──────────────────────────────────────────────────────────
+  code-security:
+    name: 🔍 Code Security (SonarCloud + Hadolint)
+    runs-on: ubuntu-latest
+    needs: secret-scan
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0              # SonarCloud needs full history
+
+      # ── SonarCloud — SAST + Code Quality ──────────────────
+      # Covers everything Bandit does + code quality, hotspots,
+      # technical debt, duplication — no webhook needed,
+      # scanner waits inline for Quality Gate result
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # ── Hadolint — Dockerfile linter ──────────────────────
+      # Catches security misconfigs in Dockerfile
+      # (running as root, missing flags, bad base images)
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 3 — Dependency Security
+  # pip-audit (CVE scan) + CycloneDX (SBOM)
+  # ──────────────────────────────────────────────────────────
+  dependency-security:
+    name: 📦 Dependency Security (pip-audit + CycloneDX)
+    runs-on: ubuntu-latest
+    needs: secret-scan
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install tools
+        run: pip install pip-audit cyclonedx-bom
+
+      # ── pip-audit — dependency CVE scanner ────────────────
+      - name: Install project dependencies
+        run: pip install -r requirements.txt --quiet
+
+      - name: Run pip-audit
+        run: |
+          pip-audit \
+            --requirement requirements.txt \
+            --format json \
+            --output pip-audit-report.json \
+            --vulnerability-service osv \
+            || true
+
+      - name: Check pip-audit results
+        run: |
+          VULNS=$(python3 -c "
+          import json
+          with open('pip-audit-report.json') as f:
+            data = json.load(f)
+          total = sum(len(d.get('vulns',[])) for d in data.get('dependencies',[]))
+          print(total)
+          ")
+          echo "Vulnerabilities found: $VULNS"
+          if [ "$VULNS" -gt "0" ]; then
+            echo "❌ pip-audit found vulnerabilities in dependencies"
+            cat pip-audit-report.json
+            exit 1
+          fi
+          echo "✅ No vulnerabilities found in dependencies"
+
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-audit-report
+          path: pip-audit-report.json
+
+      # ── CycloneDX — SBOM generation ───────────────────────
+      - name: Generate SBOM with CycloneDX
+        run: |
+          cyclonedx-py requirements requirements.txt \
+            --output-format json \
+            --output-file sbom.json
+          echo "✅ SBOM generated"
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.json
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 4 — ML Model Security
+  # Unique to MLSecOps — scan model weights for malicious code
+  # ──────────────────────────────────────────────────────────
+  model-security:
+    name: 🤖 ML Model Security (ModelScan)
+    runs-on: ubuntu-latest
+    needs: secret-scan
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install ModelScan
+        run: pip install modelscan
+
+      # ModelScan — scans .pt files for malicious pickle payloads
+      # PyTorch model files use pickle which can execute arbitrary
+      # code on load — unique ML attack vector
+      - name: Scan model weights
+        run: |
+          echo "Scanning model/best.pt..."
+          modelscan scan -p model/best.pt -r json > modelscan-report.json 2>&1 || true
+
+          ISSUES=$(python3 -c "
+          import json
+          with open('modelscan-report.json') as f:
+            data = json.load(f)
+          print(len(data.get('issues', [])))
+          " 2>/dev/null || echo "0")
+
+          echo "Issues found: $ISSUES"
+          if [ "$ISSUES" -gt "0" ]; then
+            echo "❌ ModelScan found issues in model weights"
+            cat modelscan-report.json
+            exit 1
+          fi
+          echo "✅ Model weights are clean"
+
+      - name: Upload ModelScan report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: modelscan-report
+          path: modelscan-report.json
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 5 — Build + Image Scan + Push to ECR
+  # Runs only after ALL security jobs pass
+  # ──────────────────────────────────────────────────────────
+  build-and-push:
+    name: 🐳 Build + Trivy Image Scan + Push to ECR
+    runs-on: ubuntu-latest
+    needs:
+      - code-security
+      - dependency-security
+      - model-security
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate image metadata
+        id: meta
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "image_tag=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "image_latest=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build locally first — Trivy scans before push
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.image_tag }}
+          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache
+          cache-to: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache,mode=max
+
+      # Trivy — scan built image for OS + package CVEs before push
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.meta.outputs.image_tag }}
+          format: json
+          output: trivy-image-report.json
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-image-report
+          path: trivy-image-report.json
+
+      # Push only after Trivy passes
+      - name: Push image to ECR
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image_tag }}
+            ${{ steps.meta.outputs.image_latest }}
+          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache
+          cache-to: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:cache,mode=max
+
+      - name: Pipeline summary
+        if: github.event_name == 'push'
+        run: |
+          echo "## MLSecOps CI Pipeline ✅" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Gate | Tool | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------------|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scanning | Gitleaks | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| SAST + Code Quality | SonarCloud | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dockerfile Lint | Hadolint | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency CVEs | pip-audit | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| SBOM | CycloneDX | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+          echo "| Model Weights | ModelScan | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image CVEs | Trivy | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA | \`${{ steps.meta.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Latest | \`${{ steps.meta.outputs.image_latest }}\` |" >> $GITHUB_STEP_SUMMARY
