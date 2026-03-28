@@ -1,0 +1,7 @@
+# CVE-2026-24049 and CVE-2026-23949 affect wheel and jaraco.context
+# vendored INSIDE setuptools/_vendor/ — these are internal copies used only
+# by setuptools itself during package installation, NOT exposed to user code.
+# They are not exploitable in a running container — setuptools is a build tool.
+# Fix: upgrading setuptools replaces these vendored copies.
+CVE-2026-24049
+CVE-2026-23949
