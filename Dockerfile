@@ -23,9 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean
 
 # Install Python packages
+# CPU-only index used for torch — avoids downloading 2.5 GB of CUDA binaries
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        --extra-index-url https://pypi.org/simple \
+        -r requirements.txt
 
 # ---- Stage 2: Final image ----
 FROM python:3.10-slim
