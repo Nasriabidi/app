@@ -15,7 +15,7 @@ MODEL_PATH = BASE_DIR / "model" / "best.pt"
 TEMP_DIR = BASE_DIR / "temp"
 TEMP_DIR.mkdir(exist_ok=True)
 
-CONF_THRESHOLD = 0.25
+CONF_THRESHOLD = 0.3
 IOU_THRESHOLD = 0.45
 
 model = None
