@@ -117,23 +117,14 @@ jobs:
           pip-audit \
             --requirement requirements.txt \
             --format json \
-            --vulnerability-service osv 2>&1 | tee pip-audit-report.json
-          echo "Exit code: $?"
+            --vulnerability-service osv > pip-audit-report.json || true
+          echo "--- pip-audit output ---"
+          cat pip-audit-report.json
 
       - name: Check pip-audit results
         run: |
-          python3 -c "
-          import json, sys
-          try:
-              with open('pip-audit-report.json') as f:
-                  data = json.load(f)
-              total = sum(len(d.get('vulns', [])) for d in data.get('dependencies', []))
-              print(f'Vulnerabilities found: {total}')
-              sys.exit(1 if total > 0 else 0)
-          except Exception as e:
-              print(f'ERROR: {e}')
-              sys.exit(1)
-          "
+          python3 -c "import json,sys; data=json.load(open('pip-audit-report.json')); total=sum(len(d.get('vulns',[])) for d in data.get('dependencies',[])); print('Vulns:',total); sys.exit(1 if total>0 else 0)"
+
 
       - name: Upload pip-audit report
         uses: actions/upload-artifact@v4
