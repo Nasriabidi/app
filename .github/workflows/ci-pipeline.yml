@@ -1,8 +1,8 @@
 # ============================================================
-# CI Pipeline — MLSecOps Security + Build + Push to ECR
+# CI/CD Pipeline — MLSecOps Security + Build + Push + Deploy
 # ============================================================
 
-name: CI — MLSecOps Security + Build & Push
+name: CI/CD — MLSecOps Security + Build & Push + Deploy
 
 on:
   push:
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0              # Full history — scan all commits
+          fetch-depth: 0
 
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
@@ -55,8 +55,6 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # JOB 2 — Code Security
-  # SonarCloud replaces Bandit — does SAST + code quality
-  # Hadolint — Dockerfile security linting
   # ──────────────────────────────────────────────────────────
   code-security:
     name: 🔍 Code Security (SonarCloud + Hadolint)
@@ -67,22 +65,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0              # SonarCloud needs full history
+          fetch-depth: 0
 
-      # ── SonarCloud — SAST + Code Quality ──────────────────
-      # Covers everything Bandit does + code quality, hotspots,
-      # technical debt, duplication — no webhook needed,
-      # scanner waits inline for Quality Gate result
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # ── Hadolint — Dockerfile linter ──────────────────────
-      # Catches real security misconfigs (running as root, bad base images)
-      # DL3008 ignored: apt pinning impractical for system libs
-      # DL3013 ignored: pip already uses -r requirements.txt (versions pinned there)
       - name: Run Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
@@ -92,7 +82,6 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # JOB 3 — Dependency Security
-  # pip-audit (CVE scan) + CycloneDX (SBOM)
   # ──────────────────────────────────────────────────────────
   dependency-security:
     name: 📦 Dependency Security (pip-audit + CycloneDX)
@@ -111,7 +100,6 @@ jobs:
       - name: Install tools
         run: pip install pip-audit cyclonedx-bom
 
-      # ── pip-audit — dependency CVE scanner ────────────────
       - name: Run pip-audit
         run: |
           pip-audit \
@@ -136,7 +124,6 @@ jobs:
           sys.exit(1 if total > 0 else 0)
           "
 
-
       - name: Upload pip-audit report
         uses: actions/upload-artifact@v4
         if: always()
@@ -144,7 +131,6 @@ jobs:
           name: pip-audit-report
           path: pip-audit-report.json
 
-      # ── CycloneDX — SBOM generation ───────────────────────
       - name: Generate SBOM with CycloneDX
         run: |
           cyclonedx-py requirements requirements.txt \
@@ -160,7 +146,6 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # JOB 4 — ML Model Security
-  # Unique to MLSecOps — scan model weights for malicious code
   # ──────────────────────────────────────────────────────────
   model-security:
     name: 🤖 ML Model Security (ModelScan)
@@ -179,9 +164,6 @@ jobs:
       - name: Install ModelScan
         run: pip install modelscan
 
-      # ModelScan — scans .pt files for malicious pickle payloads
-      # PyTorch model files use pickle which can execute arbitrary
-      # code on load — unique ML attack vector
       - name: Scan model weights
         run: |
           echo "Scanning model/best.pt..."
@@ -212,6 +194,7 @@ jobs:
   # ──────────────────────────────────────────────────────────
   # JOB 5 — Build + Image Scan + Push to ECR
   # Runs only after ALL security jobs pass
+  # Exposes short_sha as output so CD job can use it
   # ──────────────────────────────────────────────────────────
   build-and-push:
     name: 🐳 Build + Trivy Image Scan + Push to ECR
@@ -220,6 +203,11 @@ jobs:
       - code-security
       - dependency-security
       - model-security
+
+    # ── Expose SHA to CD job ──────────────────────────────
+    # CD job reads this via: needs.build-and-push.outputs.short_sha
+    outputs:
+      short_sha: ${{ steps.meta.outputs.short_sha }}
 
     steps:
       - name: Checkout repository
@@ -247,8 +235,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Build locally first — Trivy scans before push
-      # no-cache=true forces full rebuild — ensures CVE fixes are applied
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -259,7 +245,6 @@ jobs:
           no-cache: true
           tags: ${{ steps.meta.outputs.image_tag }}
 
-      # Trivy — scan built image for OS + package CVEs before push
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -268,8 +253,8 @@ jobs:
           output: trivy-image-report.json
           severity: HIGH,CRITICAL
           exit-code: '1'
-          ignore-unfixed: true      # Skip OS CVEs with no patch available
-          trivyignores: .trivyignore # Skip vendored setuptools internal CVEs
+          ignore-unfixed: true
+          trivyignores: .trivyignore
 
       - name: Upload Trivy report
         uses: actions/upload-artifact@v4
@@ -278,7 +263,6 @@ jobs:
           name: trivy-image-report
           path: trivy-image-report.json
 
-      # Push only after Trivy passes
       - name: Push image to ECR
         if: github.event_name == 'push'
         uses: docker/build-push-action@v5
@@ -309,3 +293,75 @@ jobs:
           echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| SHA | \`${{ steps.meta.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Latest | \`${{ steps.meta.outputs.image_latest }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 6 — CD: Update Manifest + Trigger ArgoCD
+  #
+  # What this job does:
+  #   1. Takes the SHA from build-and-push job
+  #   2. Updates k8s/eks-deployment.yaml with new image tag
+  #   3. Commits and pushes to GitHub
+  #   4. ArgoCD detects the change and deploys automatically
+  #
+  # Runs only on push to main (not on pull_request)
+  # Runs only after build-and-push succeeds
+  # ──────────────────────────────────────────────────────────
+  deploy:
+    name: 🚀 CD — Update Manifest & Trigger ArgoCD
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    # Only run on push to main — not on pull requests
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use PAT instead of GITHUB_TOKEN so the commit
+          # triggers ArgoCD webhook (GITHUB_TOKEN commits are
+          # ignored by GitHub Actions to prevent loops)
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      # Update the image tag in the Kubernetes manifest
+      # sed finds the image line and replaces the tag with new SHA
+      - name: Update image tag in manifest
+        run: |
+          SHORT_SHA=${{ needs.build-and-push.outputs.short_sha }}
+          echo "Updating image tag to: ${SHORT_SHA}"
+
+          sed -i "s|image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:.*|image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${SHORT_SHA}|g" k8s/eks-deployment.yaml
+
+          echo "✅ Manifest updated:"
+          grep "image:" k8s/eks-deployment.yaml
+
+      # Commit and push the updated manifest
+      # ArgoCD watches this repo and will detect this commit
+      - name: Commit and push updated manifest
+        run: |
+          SHORT_SHA=${{ needs.build-and-push.outputs.short_sha }}
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add k8s/eks-deployment.yaml
+
+          # Only commit if there's an actual change
+          if git diff --staged --quiet; then
+            echo "⚠️ No changes detected in manifest — skipping commit"
+          else
+            git commit -m "cd: update image tag to ${SHORT_SHA} [skip ci]"
+            git push
+            echo "✅ Manifest pushed — ArgoCD will sync automatically"
+          fi
+
+      - name: CD Summary
+        run: |
+          SHORT_SHA=${{ needs.build-and-push.outputs.short_sha }}
+          echo "## MLSecOps CD Pipeline ✅" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Manifest updated | ✅ k8s/eks-deployment.yaml |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image tag | \`${SHORT_SHA}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| ArgoCD sync | 🔄 Automatic (GitOps) |" >> $GITHUB_STEP_SUMMARY
