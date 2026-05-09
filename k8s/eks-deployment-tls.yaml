@@ -1,8 +1,8 @@
 # ============================================================
-# EKS Ingress — PHASE 2: HTTPS + SSL Redirect
+# EKS Ingress — PHASE 2: HTTPS + SSL Redirect (nginx)
 # Apply ONLY after certificate is successfully issued:
 #   kubectl get certificate -n crack-inspection
-#   (STATUS must be "True" before applying this file)
+#   (READY must be "True" before applying this file)
 #
 # Apply with: kubectl apply -f eks-deployment-tls.yaml
 # ============================================================
@@ -13,29 +13,17 @@ metadata:
   name: crack-inspection-ingress
   namespace: crack-inspection
   annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-
     cert-manager.io/cluster-issuer: letsencrypt-prod
-
-    # Both HTTP and HTTPS open
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-
-    # Now safe to redirect HTTP → HTTPS (cert exists)
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
-
+    # Force HTTP → HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     # Timeouts for image processing
-    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=120
-
-    # Health check
-    alb.ingress.kubernetes.io/healthcheck-path: /
-    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
-    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "10"
-    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
-    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
-
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
 spec:
+  ingressClassName: nginx
   tls:
     - hosts:
         - crackinspection.duckdns.org
