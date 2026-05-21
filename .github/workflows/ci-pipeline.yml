@@ -1,5 +1,5 @@
 # ============================================================
-# CI/CD Pipeline — MLSecOps Security + Build + Push + Deploy
+# CI Pipeline — MLSecOps Security + Build + Push + Deploy
 # ============================================================
 
 name: CI/CD — MLSecOps Security + Build & Push + Deploy
