@@ -15,7 +15,7 @@ on:
       - 'nginx.aks.conf'
       - 'supervisord.conf'
       - 'webapp/**'
-      - 'model/**'
+      - 'model-manifest.json'
 
   pull_request:
     branches:
@@ -27,12 +27,13 @@ on:
       - 'nginx.aks.conf'
       - 'supervisord.conf'
       - 'webapp/**'
-      - 'model/**'
+      - 'model-manifest.json'
 
 env:
   ECR_REGISTRY: 351611731527.dkr.ecr.us-east-1.amazonaws.com
   ECR_REPOSITORY: mlsecops/app
   AWS_REGION: us-east-1
+  MODELS_BUCKET: mlsecops-models-351611731527
 
 jobs:
 
@@ -146,6 +147,7 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # JOB 4 — ML Model Security
+  # Model is no longer in the repo — download from S3 first
   # ──────────────────────────────────────────────────────────
   model-security:
     name: 🤖 ML Model Security (ModelScan)
@@ -160,6 +162,27 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download model from S3 using manifest
+        run: |
+          pip install boto3 --quiet
+          python3 - <<'EOF'
+          import json, boto3, os
+          manifest = json.loads(open("model-manifest.json").read())
+          bucket  = manifest["models_bucket"]
+          s3_key  = manifest["model_s3_key_latest"]
+          print(f"Downloading model from s3://{bucket}/{s3_key} ...")
+          os.makedirs("model", exist_ok=True)
+          boto3.client("s3").download_file(bucket, s3_key, "model/best.pt")
+          print("Model downloaded successfully.")
+          EOF
 
       - name: Install ModelScan
         run: pip install modelscan
@@ -193,8 +216,6 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # JOB 5 — Build + Image Scan + Push to ECR
-  # Runs only after ALL security jobs pass
-  # Exposes short_sha as output so CD job can use it
   # ──────────────────────────────────────────────────────────
   build-and-push:
     name: 🐳 Build + Trivy Image Scan + Push to ECR
@@ -204,8 +225,6 @@ jobs:
       - dependency-security
       - model-security
 
-    # ── Expose SHA to CD job ──────────────────────────────
-    # CD job reads this via: needs.build-and-push.outputs.short_sha
     outputs:
       short_sha: ${{ steps.meta.outputs.short_sha }}
 
@@ -296,58 +315,35 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # JOB 6 — CD: Update Manifest + Trigger ArgoCD
-  #
-  # What this job does:
-  #   1. Takes the SHA from build-and-push job
-  #   2. Updates k8s/eks-deployment.yaml with new image tag
-  #   3. Commits and pushes to GitHub
-  #   4. ArgoCD detects the change and deploys automatically
-  #
-  # Runs only on push to main (not on pull_request)
-  # Runs only after build-and-push succeeds
   # ──────────────────────────────────────────────────────────
   deploy:
     name: 🚀 CD — Update Manifest & Trigger ArgoCD
     runs-on: ubuntu-latest
     needs: build-and-push
 
-    # Only run on push to main — not on pull requests
     if: github.event_name == 'push'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Use PAT instead of GITHUB_TOKEN so the commit
-          # triggers ArgoCD webhook (GITHUB_TOKEN commits are
-          # ignored by GitHub Actions to prevent loops)
           token: ${{ secrets.GH_PAT }}
           fetch-depth: 0
 
-      # Update the image tag in the Kubernetes manifest
-      # sed finds the image line and replaces the tag with new SHA
       - name: Update image tag in manifest
         run: |
           SHORT_SHA=${{ needs.build-and-push.outputs.short_sha }}
           echo "Updating image tag to: ${SHORT_SHA}"
-
           sed -i "s|image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:.*|image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${SHORT_SHA}|g" k8s/eks-deployment.yaml
-
           echo "✅ Manifest updated:"
           grep "image:" k8s/eks-deployment.yaml
 
-      # Commit and push the updated manifest
-      # ArgoCD watches this repo and will detect this commit
       - name: Commit and push updated manifest
         run: |
           SHORT_SHA=${{ needs.build-and-push.outputs.short_sha }}
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add k8s/eks-deployment.yaml
-
-          # Only commit if there's an actual change
           if git diff --staged --quiet; then
             echo "⚠️ No changes detected in manifest — skipping commit"
           else
