@@ -1,0 +1,11 @@
+{
+  "model_name": "placeholder",
+  "model_s3_key": "crack-seg/latest/best.pt",
+  "model_s3_key_latest": "crack-seg/latest/best.pt",
+  "baseline_profile_s3_key": "",
+  "git_sha": "placeholder",
+  "mlflow_run_id": "placeholder",
+  "mlflow_metrics": {},
+  "models_bucket": "mlsecops-models-351611731527",
+  "trained_at": "placeholder"
+}

@@ -70,7 +70,9 @@ RUN pip install --no-cache-dir --upgrade "setuptools>=80.0.0"
 
 # Copy API source
 COPY main.py .
-COPY model/ ./model/
+# model-manifest.json tells main.py which model + baseline to download from S3 at startup
+# The model itself is NOT baked into the image — downloaded at container start
+COPY model-manifest.json .
 
 # Temp dir for image processing
 RUN mkdir -p /app/temp
