@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
         - name: crack-inspection
-          image: 351611731527.dkr.ecr.us-east-1.amazonaws.com/mlsecops/app:02d72ae
+          image: 351611731527.dkr.ecr.us-east-1.amazonaws.com/mlsecops/app:09c885e
           imagePullPolicy: Always
           ports:
             - name: http
