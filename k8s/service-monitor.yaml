@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: crack-inspection
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - crack-inspection
+  selector:
+    matchLabels:
+      app: crack-inspection
+  endpoints:
+    - port: api
+      path: /metrics
+      interval: 30s
