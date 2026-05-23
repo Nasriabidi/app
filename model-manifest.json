@@ -1,11 +1,21 @@
 {
-  "model_name": "placeholder",
-  "model_s3_key": "crack-seg/latest/best.pt",
+  "model_name": "crack_seg_8b886e0_20260523.pt",
+  "model_s3_key": "crack-seg/8b886e061b7f985a8883bce59bc7227a4aa5ecd7/crack_seg_8b886e0_20260523.pt",
   "model_s3_key_latest": "crack-seg/latest/best.pt",
-  "baseline_profile_s3_key": "",
-  "git_sha": "placeholder",
-  "mlflow_run_id": "placeholder",
-  "mlflow_metrics": {},
+  "baseline_profile_s3_key": "crack-seg/8b886e061b7f985a8883bce59bc7227a4aa5ecd7/baseline_profile.bin",
+  "git_sha": "8b886e061b7f985a8883bce59bc7227a4aa5ecd7",
+  "mlflow_run_id": "1bacfd508ae442c5b148942c70e33400",
+  "mlflow_metrics": {
+    "precision_box": 0.5594,
+    "recall_box": 0.6104,
+    "mAP50_box": 0.574,
+    "mAP50_95_box": 0.2973,
+    "precision_mask": 0.4971,
+    "recall_mask": 0.5542,
+    "mAP50_mask": 0.4565,
+    "mAP50_95_mask": 0.1287,
+    "fitness": 0.426
+  },
   "models_bucket": "mlsecops-models-351611731527",
-  "trained_at": "placeholder"
+  "trained_at": "2026-05-23T00:35:24.238232+00:00"
 }
