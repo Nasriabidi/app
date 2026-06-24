@@ -13,8 +13,6 @@ app/
 ├── .dockerignore           # Docker ignore file
 ├── main.py                 # FastAPI backend
 ├── requirements.txt        # Python dependencies
-├── model/
-│   └── best.pt             # YOLOv8 trained model
 └── webapp/
     ├── index.html          # Frontend HTML
     ├── styles.css          # Frontend styles
